@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Messaging;
@@ -16,6 +17,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using VRCFaceTracking.Activation;
+using VRCFaceTracking.Avalonia.Helpers;
 using VRCFaceTracking.Avalonia.ViewModels;
 using VRCFaceTracking.Avalonia.ViewModels.SplitViewPane;
 using VRCFaceTracking.Avalonia.Views;
@@ -63,7 +65,7 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        Localizer.SetLocalizer(new JsonLocalizer());
+        Localizer.SetLocalizer(new AvaloniaLocalizer());
         Localizer.Language = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
 
         var locator = new ViewLocator();
@@ -135,14 +137,16 @@ public partial class App : Application
                 services.Configure<LocalSettingsOptions>(config);
             });
 
-        _host = hostBuilder.Build();
-        Task.Run(async () => await _host.StartAsync());
-        
         if (!File.Exists(LocalSettingsService.DefaultLocalSettingsFile))
         {
             // Create the file if it doesn't exist
-            File.Create(LocalSettingsService.DefaultLocalSettingsFile).Dispose();
+            using var stream = AssetLoader.Open(new Uri("avares://VRCFaceTracking.Avalonia/Assets/LocalSettings.json"));
+            using var fileStream = new FileStream(LocalSettingsService.DefaultLocalSettingsFile, FileMode.Create, FileAccess.Write);
+            stream.CopyTo(fileStream);
         }
+
+        _host = hostBuilder.Build();
+        Task.Run(async () => await _host.StartAsync());
 
         Ioc.Default.ConfigureServices(_host.Services);
 
